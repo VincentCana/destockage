@@ -1,0 +1,81 @@
+<body>
+
+
+<div class="modal fade" id="myUpdateModal" role="dialog" data-backdrop="false">
+    <div class="modal-dialog">
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h3 class="modal-title">Baisse de prix</h3>
+            </div>
+
+            <div class="modal-body">
+                <p id='currentPriceUpdate' data-price="{{ updateProduct.currentPrice }}">
+                    <h4>Prix Actuel :
+                        {{ updateProduct.currentPrice | number_format(2,'.') }}€
+                    </h4>
+                </p>
+                <p id='newPrice'></p>
+                <p id='errorsUpdateProduct'></p>
+                {{ form_start(formUpdate, {'attr' : {'enctype': "multipart/form-data", 'class' : "form-horizontal", 'autocomplete':'off','id':'updateForm'}}) }}
+                <div class="form-group">
+                    {{ form_label(formUpdate.title, "Titre de l'annonce", {'label_attr': {'class': 'col-sm-4 control-label'}}) }}
+                    <div class="col-sm-8">
+                        {{ form_widget(formUpdate.title, {'attr' : { 'type' : 'text' }}) }}
+                        {{ form_errors(formUpdate.title) }}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    {{ form_label(formUpdate.discountType, "Type de réduction", {'label_attr': {'class': 'col-sm-4 control-label'}}) }}
+                    <div class="col-sm-8">
+                        {{ form_widget(formUpdate.discountType) }}
+                        {{ form_errors(formUpdate.discountType) }}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    {{ form_label(formUpdate.discountValue, "Montant de la remise", {'label_attr': {'class': 'col-sm-4 control-label'}}) }}
+                    <div class="col-sm-8">
+                        {{ form_widget(formUpdate.discountValue, {'type' : 'number'}) }}
+                        {{ form_errors(formUpdate.discountValue) }}
+                    </div>
+
+                </div>
+
+                <div class="form-group">
+                    {{ form_label(formUpdate.picture, "Photo", {'label_attr': {'class': 'col-sm-4 control-label'}}) }}
+                    <div class="col-sm-8">
+                        <label class="btn btn-default btn-file">
+                            Choisir la photo
+                            {{ form_widget(formUpdate.picture) }}
+                        </label>
+                        {{ updateProduct.pictureName }}
+                        {{ form_errors(formUpdate.picture)}}
+
+                    </div>
+                </div>
+                <div id="image_preview" class='col-lg-10 col-lf-offest-2'>
+                    <div class='thumbnail hidden'>
+                        <img src="">
+                        <div class='caption'>
+                            <h4></h4>
+                            <p>
+                                <button class='btn btn-default btn-danger' type='button' name='annulateButton'>Annuler</button>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <p id='catchError'></p>
+
+                <div class="newProduct-footer">
+                    {{ form_end(formUpdate) }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+</body>

@@ -1,0 +1,11 @@
+
+
+services:
+#    discount.example:
+#        class: DiscountBundle\Example
+#        arguments: ["@service_id", "plain_value", "%parameter%"]
+    app.form.type.productType:
+        class: DiscountBundle\Form\ProductUpdateType
+        arguments: ["@doctrine.orm.entity_manager"]
+        tags:
+            - { name: form.Update }
