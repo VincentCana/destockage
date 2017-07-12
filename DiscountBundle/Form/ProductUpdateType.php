@@ -34,6 +34,11 @@ class ProductUpdateType extends AbstractType
                     ],
                 ])
             ->add('picture', FileType::class, ['required'=>false, 'data_class'=>null])
+            ->add('priority',ChoiceType::class,[
+                'choices'=> ['1'=>'1','2'=>'2','3'=>'3'],
+                'expanded' =>false,
+                'multiple' => false
+                ])
             ->add('Valider', SubmitType::class,[
                 'attr'=>[
                     'class' => 'btn-sm'

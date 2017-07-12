@@ -1,5 +1,3 @@
-
-
 services:
 #    discount.example:
 #        class: DiscountBundle\Example
@@ -9,3 +7,8 @@ services:
         arguments: ["@doctrine.orm.entity_manager"]
         tags:
             - { name: form.Update }
+
+    discount.parsexml:
+        class: DiscountBundle\Services\ProductDiscountService
+        public: true
+        arguments: ["@doctrine.orm.entity_manager", "@security.token_storage"]

@@ -16,6 +16,7 @@ use \DateTime;
 use \PDO;
 use Doctrine\ORM\EntityRepository;
 use FOS\RestBundle\Controller\Annotations as Rest;
+use DiscountBundle\Services\ProductService;
 
 class DefaultController extends Controller
 {
@@ -61,19 +62,12 @@ class DefaultController extends Controller
     }
 
     /**
+     * permet de récupérer le XML des dispos, de le parser et de persister les données en BDD
      * @Route("/discount",name="discount_view")
-     * permet de récupérer le XML des dispos, de le parser et de persiter les données en BDD
      * @Method({"GET", "POST"})
      */
     public function indexAction()
     {
-        //connexion à la BDD pour vider la table show_product à chaque rechargement de page
-        try {
-            $bdd = new PDO('mysql:host=localhost; dbname=espaceclient; charset=utf8', 'root', '');
-        } catch (Exception $e) {
-            die('Erreur : ' . $e->getMessage());
-        }
-        $truncateTable = $bdd->query('TRUNCATE TABLE show_product');
 
         //création des variables, du samedi au samedi et sur 3 semaines, pour l'affichage sur la page d'accueil
         $year = date("Y");
@@ -87,102 +81,41 @@ class DefaultController extends Controller
         $weekTitle2 = $this->getSaturday($week, $year, $this->getMonday($week, $year), 12, 19);
         $weekTitle3 = $this->getSaturday($week, $year, $this->getMonday($week, $year), 19, 26);
 
-        $weeks=[$dateSaturday1 => $weekTitle1, $dateSaturday2 => $weekTitle2, $dateSaturday3 => $weekTitle3 ];
-
+        $weeks1 = [$dateSaturday1 => $weekTitle1];
+        $weeks2 = [$dateSaturday2 => $weekTitle2];
+        $weeks3 = [$dateSaturday3 => $weekTitle3];
 
         //récupération de l'id de l'utilisateur
         $campLiveId = $this->get("security.token_storage")->getToken()->getUser()->getCampLiveId();
-
-        //fichier récupérant le xml et fonction de vidage à chaque chargement de page
-        $filepath ="../web/dispo.xml";
-        unlink($filepath);
-
-        //utilisation de Curl pour se connecter au serveur distant Camplive
-        //et aller chercher le fichier XML des disponibilités
-        $lien = 'http://camplive.com/admin/destockage/subfolder2.xml';
-        $user= 'camplive';
-        $pass = 'pa98mico';
-
-        $curl=curl_init();
-        curl_setopt($curl, CURLOPT_URL, $lien);
-        curl_setopt($curl, CURLOPT_USERPWD, "$user:$pass");
-        curl_setopt($curl, CURLOPT_COOKIESESSION, true);
-        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-
-        $file = curl_exec($curl);
-
-        //réécrture du fichier avec une balise englobante pour pouvoir le parser
-        $file2 = "<discount>".$file."</discount>";
-        //enregistrement du fichier
-        file_put_contents($filepath, $file2, FILE_APPEND);
-        curl_close($curl);
-
-
-        //instanciation de la casse DomDocument afin de parser le XML
-        $dom = new \DomDocument();
-        $dom->load($filepath);
-        $productList = $dom->getElementsByTagName('state_product_type');
-
-        foreach ($productList as $list) {
-            if (($list->attributes->getNamedItem("id_company")->nodeValue) == $campLiveId) {
-
-                //instanciation de ShowProduct et setting des données afin de persister en BDD
-                $showProduct = new ShowProduct();
-                $idCompany = $list->attributes->getNamedItem("id_company")->nodeValue;
-                $idProducts = $list->attributes->getNamedItem("id_product_type")->nodeValue;
-                $showProduct->getShowIdProduct();
-                $showProduct->setShowIdProduct($idProducts);
-                $prices = $list->attributes->getNamedItem("prix")->nodeValue;
-                $showProduct->getShowCurrentPrice();
-                $showProduct->setShowCurrentPrice(floatval($prices));
-                $dateWeek = $list->attributes->getNamedItem("arrival_date")->nodeValue;
-                $dateWeek =  new DateTime($dateWeek);
-                $showProduct->getShowDateWeek();
-                $showProduct->setShowDateWeek($dateWeek);
-                $date = $dateWeek->format('d-m-Y');
-                $showConcatenation = $idCompany . $idProducts . $date;
-                $showProduct->setShowConcatenation($showConcatenation);
-                $em = $this->getDoctrine()->getManager();
-                $em->persist($showProduct);
-                $em->flush($showProduct);
-            }
-        }
-
         $em = $this->getDoctrine()->getManager();
-        //récupération de tous les showProducts qui n'ont pas déjà été destockés pour l'affichage sur la page d'accueil
-        $showProducts = $em->getRepository('DiscountBundle:ShowProduct')->findProductsAlreadyExists();
-
         $tickets = $em->getRepository('TicketBundle:Ticket')->findTicketsBydate5();
+
+        // a chaque chargement de la page, supprime les produits de l'utilisateur
+        //pour éviter les conflits lors de la saisie d'une promo en cas de connexion multiple
+        $em->getRepository('DiscountBundle:ShowProduct')->deleteProductByCamping($campLiveId);
+
+        //appel le service dans ProductDiscountService et la fonction parseXML()
+        $this->get('discount.parsexml')->parseXML($campLiveId);
+
+        //récupération de tous les showProducts qui n'ont pas déjà été destockés pour l'affichage sur la page d'accueil
+        $showProducts = $em->getRepository('DiscountBundle:ShowProduct')->findProductsAlreadyExists($campLiveId);
 
         //récupération de tous les produits destockés pour l'affichage sur la page d'accueil
         $products = $em->getRepository('DiscountBundle:Product')->productVisibility($campLiveId);
 
-        $todaysDate = (new \DateTime());
-        //boucle pour récupérer les dates. De cette manière quand un produit a été remisé mais que le week-end de remise est dépassé
-        //on passe la visibility à false
-        foreach ($products as $product) {
-            $dateWeek = $product->getDateWeek();
-
-            //condition qui compare date du jour avec la date du week-end
-            if ($dateWeek <= $todaysDate) {
-                $product->setProductVisibility(false);
-                $em->flush($product);
-            }
-        }
         $sumProductVisibility = $em->getRepository('DiscountBundle:Product')->sumProductVisibility($campLiveId);
         $sumProductVisibility = $sumProductVisibility[1];
 
         return $this->render('DiscountBundle:Default:index.html.twig', [
                 'showProducts' => $showProducts,
-                'weeks' => $weeks,
-                'products'=>$products,
-                'tickets'=>$tickets,
-                'sumProductVisibility' => $sumProductVisibility
+                'products'=> $products,
+                'tickets'=> $tickets,
+                'sumProductVisibility' => $sumProductVisibility,
+                'weeks1' => $weeks1,
+                'weeks2' => $weeks2,
+                'weeks3' => $weeks3
             ]);
     }
-
-
-
 
     /**
      * Création d'un produit destocké
@@ -193,28 +126,33 @@ class DefaultController extends Controller
     {
         $em = $this->getDoctrine()->getManager();
 
-        //récupération des données d'un showProductqui resteront inchangées pour l'objet Product'
+        //récupération des données d'un showProduct qui resteront inchangées pour l'objet Product
         $showProduct = $em->getRepository('DiscountBundle:ShowProduct')->find($id);
+
         $showIdProduct = $showProduct->getShowIdProduct();
         $showDateWeek = $showProduct->getShowDateWeek();
         $showCurrentPrice = $showProduct->getShowCurrentPrice();
+        $showCampLiveId = $showProduct->getShowCampLiveId();
         $showCurrentPrice = floatval(str_replace(',', '.', $showCurrentPrice));
 
         //instanciation de Product pour créer un nouveau product
         $product = new Product();
 
+        //récupération de l'id de l'utilisateur
         $campLiveId = $this->get("security.token_storage")->getToken()->getUser()->getCampLiveId();
 
         //setting des données idem au showProduct
         $product->setCurrentPrice(floatval($showCurrentPrice));
         $product->setIdProduct($showIdProduct);
-        $product->setCampLiveId($campLiveId);
+        $product->setCampLiveId($showCampLiveId);
         $product->setDateWeek($showDateWeek);
 
         //création d'un attribut pour comparaison avec showProduct (gestion de l'affichage)
         $date = $showDateWeek->format('d-m-Y');
-        $showConcatenation = $campLiveId . $showIdProduct . $date;
+        $showConcatenation = $showCampLiveId . $showIdProduct . $date;
         $product->setConcatenation($showConcatenation);
+        $product->setKeyProduct(md5($showConcatenation));
+
 
         //on va chercher les produits avec la même concaténation que le produit crée et avec une visibilité de 1
         $productConcat = $em->getRepository('DiscountBundle:Product')->productConcactAlreadyExists($showConcatenation);
@@ -222,8 +160,7 @@ class DefaultController extends Controller
         //lors de la création d'un produit la visibilité est à true par défaut
         $product->setProductVisibility(true);
 
-
-        $sumProductVisibility = $em->getRepository('DiscountBundle:Product')->sumProductVisibility($campLiveId);
+        $sumProductVisibility = $em->getRepository('DiscountBundle:Product')->sumProductVisibility($showCampLiveId);
         $sumProductVisibility = $sumProductVisibility[1];
 
         //création du formulaire
@@ -234,7 +171,8 @@ class DefaultController extends Controller
 
             //on vérifie qu'il n'y a moins de 3 produits dont la visibilité est à 1
             //ainsi que le fait qu'un produit dont la visibilité est à 1 avec la même concaténation n'existe pas.
-            if ($sumProductVisibility < 3 && $productConcat == null) {
+            // $campLiveId == $showCampLiveId permet de vérifier que la personne qui ajoute un produit est du meme camping
+            if ($sumProductVisibility < 3 && $productConcat == null && $campLiveId == $showCampLiveId) {
 
                 //Calcul du nouveau prix si la remise est en €
                 if (($request->request->get('product_discount')['discountType'])== '0') {
@@ -276,7 +214,8 @@ class DefaultController extends Controller
                     }
                 $em->persist($product);
                 $em->flush();
-
+                //appel la fonction d'insert vers PAWEB
+                $this->insertProductInPaWeb($product);
                 return new JsonResponse($product);
             }
         }
@@ -289,6 +228,36 @@ class DefaultController extends Controller
              ));
     }
 
+    //permet de persiste les données sur le serveur PAWEB
+    public function insertProductInPaWeb($product)
+    {
+        $pdo = $this->get('discount.connectionBdd')->connectionBdd();
+        $title = $product->getTitle();
+        $price= $product->getNewPrice();
+        $keyProduct = $product->getKeyProduct();
+        $campLiveId = $product->getCampLiveId();
+        $idProduct = $product->getIdProduct();
+        $date = $product->getDateWeek();
+        $dateWeek = $date->format('Y-m-d 00:00:00');
+
+        $stmt = $pdo->prepare("INSERT INTO PADestockage(key_product, camp_live_id, title, id_product, price, date_week)
+          VALUES('$keyProduct', '$campLiveId', '$title', '$idProduct', '$price', '$dateWeek') ");
+
+        $stmt->execute();
+    }
+
+    //permet de mettre à jour les donners sur le serveur PAWEB
+    public function updateProductInPaWeb($product)
+    {
+        $pdo = $this->get('discount.connectionBdd')->connectionBdd();
+        $title = $product->getTitle();
+        $price= $product->getNewPrice();
+        $keyProduct = $product->getKeyProduct();
+
+        $stmt = $pdo->prepare("UPDATE PADestockage SET title = '$title', price = '$price' WHERE key_product = '$keyProduct'");
+        $stmt->execute();
+    }
+
     /**
      * Modification d'un produit destocké déjà existant
      * @Route("/updateProduct/{id}",name="update_view")
@@ -296,24 +265,29 @@ class DefaultController extends Controller
      */
      public function updateProductAction(Request $request, $id)
      {
-         //récupérationde l'id du camping
-         $campLiveId = $this->get("security.token_storage")->getToken()->getUser()->getCampLiveId();
+         //récupérationde l'id du camping qui est connecté
+         $campLiveIdConnect = $this->get("security.token_storage")->getToken()->getUser()->getCampLiveId();
 
          //récupération des données relatives au produit
          $em = $this->getDoctrine()->getManager();
          $updateProduct = $em->getRepository('DiscountBundle:Product')->findOneById($id);
+
+         //récupération de l'id du camping en base de donnée
+         $campLiveIdData = $updateProduct->getCampLiveId();
 
          //création du formulaire pré-rempli
          $formUpdateProduct = $this->createForm(ProductUpdateType::class, $updateProduct);
          $formUpdateProduct->handleRequest($request);
 
          if ($formUpdateProduct->isSubmitted() && $formUpdateProduct->isValid()) {
-             $updateCurrentPrice = floatval($updateProduct->getCurrentPrice());
-             $updateProduct->setCurrentPrice(floatval($updateCurrentPrice));
-             $updateDiscountValue = floatval($request->request->get('product_update')['discountValue']);
-             $updateProduct->setDiscountValue(floatval($updateDiscountValue));
-             $discountType = $updateProduct->getDiscountType();
-             $title = $updateProduct->getTitle();
+             if ($campLiveIdConnect == $campLiveIdData) {
+                 $updateCurrentPrice = floatval($updateProduct->getCurrentPrice());
+                 $updateProduct->setCurrentPrice(floatval($updateCurrentPrice));
+                 $updateDiscountValue = floatval($request->request->get('product_update')['discountValue']);
+                 $updateProduct->setDiscountValue(floatval($updateDiscountValue));
+                 $discountType = $updateProduct->getDiscountType();
+                 $title = $updateProduct->getTitle();
+                 $priority = $updateProduct->getPriority();
 
             //Calcul du nouveau prix si la remise est en €
             if (($request->request->get('product_update')['discountType'])== '0') {
@@ -354,11 +328,13 @@ class DefaultController extends Controller
             }
             //si on ne change pas la photo, celle déjà existante reste persistée
             elseif ($request->files->get('product_update')['picture'] == null) {
-                $p = $em->getRepository('DiscountBundle:Product')->updatePicture($id, $title, $discountType, $updateDiscountValue, $newPrice);
+                $p = $em->getRepository('DiscountBundle:Product')->updatePicture($id, $title, $discountType, $updateDiscountValue, $newPrice, $priority);
                 $em->flush($p);
             }
-
-             return new JsonResponse();
+                 //appel la fonction d'update vers PAWEB
+                 $this->updateProductInPaWeb($updateProduct);
+                 return new JsonResponse();
+             }
          }
 
          return $this->render('DiscountBundle:Default:updateProduct.html.twig', array(
@@ -367,6 +343,16 @@ class DefaultController extends Controller
                 'formUpdate' => $formUpdateProduct->createView()
             ));
      }
+
+    // permet de supprimer un produit de PAWEB
+    public function deleteProductInPaWeb($product)
+    {
+        $pdo = $this->get('discount.connectionBdd')->connectionBdd();
+        $keyProduct = $product->getKeyProduct();
+
+        $stmt = $pdo->prepare("DELETE FROM PADestockage WHERE key_product = '$keyProduct'");
+        $stmt->execute();
+    }
 
      /**
       * Suppression d'un produit (affichage seulement car toujours présent en BDD)
@@ -383,9 +369,10 @@ class DefaultController extends Controller
 
          if ($campLiveId == $campLiveIdToken) {
              $deleteProduct->setProductVisibility(false);
+             // appel la fonction de suppression vers PAWEB
+             $this->deleteProductInPaWeb($deleteProduct);
              $em->flush($deleteProduct);
          }
-
          return $this->redirectToRoute('discount_view');
      }
 }

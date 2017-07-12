@@ -1,94 +1,147 @@
 {% extends 'base.html.twig' %}
 
 {% block title %}
-    Destockage
+  Destockage
 {% endblock %}
 
 {% block section %}
-    <div id='modal-wrapper'></div>
+  <div id='modal-wrapper'></div>
 
-    <h2>Produits remisés</h2>
+  <h2>Produits remisés</h2>
+  {% if sumProductVisibility >= 3 %}
+    <div class="productsMax">
+      Nombre max de produits remisés atteints
+    </div>
+  {% endif %}
 
-    {% for prod in products %}
-        <div class="row">
+  {% for prod in products %}
+    <div>
+      <div class="borderUpdateProduct">
+        <h3>{{ prod.priority }}
+          -
+          {{ prod.title }}</h3>
+        <h4>Nouveau prix :{{ prod.newPrice}}
+          €</h4>
+        <p>Disponible à partir du :
+          {{ prod.dateWeek | date('d-m-y')}}
+        </p>
+        <p>Prix sans remise :{{ prod.currentPrice }}
+          €</p>
 
-            <div class="borderUpdateProduct">
-                <p>
-                    <h3>Titre :
-                        {{ prod.title }}</h3>
-                </p>
-                <p>Nouveau prix :{{ prod.newPrice}}
-                    €</p>
-                <p>Disponible à partir du :
-                    {{ prod.dateWeek | date('d-m-y')}}
-                </p>
-                <p>Prix sans remise :{{ prod.currentPrice }}
-                    €</p>
+        {% if prod.discountType == 0 %}
+          <p>Montant de la remise :{{ prod.discountValue }}
+            €</p>
+        {% else %}
+          <p>Montant de la remise :{{ prod.discountValue }}
+            %</p>
+        {% endif %}
 
-                {% if prod.discountType == 0 %}
-                    <p>Montant de la remise :{{ prod.discountValue }}
-                        €</p>
+        <p>Référence :{{ prod.idProduct }}</p>
+        {% if prod.picture is not null %}
+          <img class='productPicture' src="{{ asset('uploads/images/destockage/' ~ prod.picture)}}"/>
+        {% endif %}
+        <div class="container">
+          <div class="updateButton">
+            <button data-id="{{ prod.id }}" data-price="{{ prod.currentPrice}}" data-new-price="{{ prod.newPrice}}" data-discount-value="{{ prod.discountValue }}" data-path="{{path('update_view', {'id' : prod.id }) }}" class="btn btn-info updateEvent">Modifier</button>
+          </div>
+          <div class="deleteButton">
+            <a href="{{ path('delete_product_view', { 'id': prod.id }) }}">
+              <button class="btn btn-danger deleteEvent">Supprimer</button>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
 
-                {% else %}
-                    <p>Montant de la remise :
-                        {{ prod.discountValue }}
-                        %</p>
-                {% endif %}
+  {% endfor %}
+</ul>
 
-                <p>Référence :
-                    {{ prod.idProduct }}</p>
-                {% if prod.picture is not null %}
-                    <img class='productPicture' src="{{ asset('uploads/images/destockage/' ~ prod.picture)}}"/>
-                {% endif %}
-                <div class="container">
-                    <div class="updateButton">
-                        <button data-id="{{ prod.id }}" data-price="{{ prod.currentPrice}}" data-new-price="{{ prod.newPrice}}" data-discount-value="{{ prod.discountValue }}" class="btn btn-info updateEvent">Modifier</button>
-                    </div>
-                    <div class="deleteButton">
-                        <a href="{{ path('delete_product_view', { 'id': prod.id }) }}">
-                            <button class="btn btn-danger deleteEvent">Supprimer</button>
-                        </a>
-                    </div>
-                </div>
+{% for saturday, week1 in weeks1 %}
+<h2>{{week1}}</h2>
+<div id="noProduct1"></div>
+<div id="viewProducts1">
+  {% for product in showProducts %}
+    {% if product.showDateWeek | date('Y-m-d') == saturday %}
+      <div class="row">
+        <div class="col-xs-6 col-md-4 borderNewProduct">
+          <p>Référence :
+            {{ product.showIdProduct }}</p>
+          <p>Libellé :
+            {{ product.showWording }}</p>
+          <p>Prix Actuel :
+            {{ product.showCurrentPrice | number_format(2,'.') }}€</p>
+          {% if sumProductVisibility < 3 %}
+            <div class="container">
+              <div class="newButton">
+                <button type="button" data-id="{{ product.id }}" class="btn btn-info editProduct" data-backdrop="false" data-toggle="modal" data-path="{{path('new_view', {'id' : product.id }) }}" data-target="#myModal{{ product.id }}">Créer une remise</button>
+              </div>
             </div>
+          {% endif %}
         </div>
+      </div>
+    {% endif %}
+  {% endfor %}
+</div>
+{% endfor %}
 
-    {% endfor %}
-
-    {% for saturday, week in weeks %}
-        <h2>{{week}}</h2>
-        {% for ii in 0..2 %}
-            <div id='noProduct{{ii}}'></div>
-        {% endfor %}
-        <div class="viewProducts">
-            {% for product in showProducts %}
-                {% if product.showDateWeek | date('Y-m-d') == saturday %}
-
-                    <div class="row">
-                        <div class="col-xs-6 col-md-4 borderNewProduct">
-                            <p>Référence :
-                                {{ product.showIdProduct }}</p>
-                            <p>Prix Actuel :
-                                {{ product.showCurrentPrice | number_format(2,'.') }}€</p>
-                            {% if sumProductVisibility < 3 %}
-                                <div class="container">
-                                    <div class="newButton">
-                                        <button type="button" data-id="{{ product.id }}" class="btn btn-info editProduct"
-                                        data-backdrop="false" data-toggle="modal" data-path="{{path('new_view', {'id' : product.id }) }}" data-target="#myModal{{ product.id }}">Créer une remise</button>
-                                    </div>
-                                </div>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                {% endif %}
-            {% endfor %}
+{% for saturday, week2 in weeks2 %}
+<h2>{{week2}}</h2>
+<div id="noProduct2"></div>
+<div id="viewProducts2">
+  {% for product in showProducts %}
+    {% if product.showDateWeek | date('Y-m-d') == saturday %}
+      <div class="row">
+        <div class="col-xs-6 col-md-4 borderNewProduct">
+          <p>Référence :
+            {{ product.showIdProduct }}</p>
+          <p>Libellé :
+            {{ product.showWording }}</p>
+          <p>Prix Actuel :
+            {{ product.showCurrentPrice | number_format(2,'.') }}€</p>
+          {% if sumProductVisibility < 3 %}
+            <div class="container">
+              <div class="newButton">
+                <button type="button" data-id="{{ product.id }}" class="btn btn-info editProduct" data-backdrop="false" data-toggle="modal" data-path="{{path('new_view', {'id' : product.id }) }}" data-target="#myModal{{ product.id }}">Créer une remise</button>
+              </div>
+            </div>
+          {% endif %}
         </div>
-    {% endfor %}
-    <div id="modal-wrapper"></div>
+      </div>
+    {% endif %}
+  {% endfor %}
+</div>
+{% endfor %}
 
+{% for saturday, week3 in weeks3 %}
+<h2>{{week3}}</h2>
+<div id="noProduct3"></div>
+<div id="viewProducts3">
+  {% for product in showProducts %}
+    {% if product.showDateWeek | date('Y-m-d') == saturday %}
+      <div class="row">
+        <div class="col-xs-6 col-md-4 borderNewProduct">
+          <p>Référence :
+            {{ product.showIdProduct }}</p>
+          <p>Libellé :
+            {{ product.showWording }}</p>
+          <p>Prix Actuel :
+            {{ product.showCurrentPrice | number_format(2,'.') }}€</p>
+          {% if sumProductVisibility < 3 %}
+            <div class="container">
+              <div class="newButton">
+                <button type="button" data-id="{{ product.id }}" class="btn btn-info editProduct" data-backdrop="false" data-toggle="modal" data-path="{{path('new_view', {'id' : product.id }) }}" data-target="#myModal{{ product.id }}">Créer une remise</button>
+              </div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  {% endfor %}
+</div>
+{% endfor %}
+
+<div id="modal-wrapper"></div>
 {% endblock %}
 
 {% block script %}{% endblock %}
-
 {% block footer %}{% endblock %}

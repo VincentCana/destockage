@@ -2,6 +2,9 @@
 
 namespace DiscountBundle\Repository;
 
+use Doctrine\ORM\Query\Expr\Join;
+use DiscountBundle\Entity\ShowProduct;
+
 /**
  * ProductRepository
  *
@@ -10,36 +13,38 @@ namespace DiscountBundle\Repository;
  */
 class ProductRepository extends \Doctrine\ORM\EntityRepository
 {
-    public function updatePicture($id, $title, $discountType, $updateDiscountValue, $newPrice)
+    public function updatePicture($id, $title, $discountType, $updateDiscountValue, $newPrice, $priority)
     {
-        return $this->createQueryBuilder('u')
-            ->update('DiscountBundle\Entity\Product', 'u')
-            ->set('u.title', '?1')
-            ->set('u.discountType', '?2')
-            ->set('u.discountValue', '?3')
-            ->set('u.newPrice', '?4')
-            ->setParameter(1, $title)
-            ->setParameter(2, $discountType)
-            ->setParameter(3, $updateDiscountValue)
-            ->setParameter(4, $newPrice)
-            ->where('u.id = :id')
-            ->setParameter('id', $id)
-            ->getQuery()
-            ->getResult();
+      return $this->createQueryBuilder('u')
+          ->update('DiscountBundle\Entity\Product', 'u')
+          ->set('u.title', '?1')
+          ->set('u.discountType', '?2')
+          ->set('u.discountValue', '?3')
+          ->set('u.newPrice', '?4')
+          ->set('u.priority', '?5')
+          ->setParameter(1, $title)
+          ->setParameter(2, $discountType)
+          ->setParameter(3, $updateDiscountValue)
+          ->setParameter(4, $newPrice)
+          ->setParameter(5, $priority)
+          ->where('u.id = :id')
+          ->setParameter('id', $id)
+          ->getQuery()
+          ->getResult();
     }
 
     public function productVisibility($campLiveId)
     {
-        return $this->createQueryBuilder('m')
-                    ->where("m.productVisibility = ?1")
-                    ->andWhere("m.campLiveId = ?2")
-                    ->setParameter(1, 1)
-                    ->setParameter(2, $campLiveId)
-                    ->orderBy("m.dateWeek", "ASC")
-                    ->getQuery()
-                    ->getResult();
+      return $this->createQueryBuilder('m')
+                  ->where("m.productVisibility = ?1")
+                  ->andWhere("m.campLiveId = ?2")
+                  ->setParameter(1, 1)
+                  ->setParameter(2, $campLiveId)
+                  ->orderBy("m.priority","ASC")
+                  ->getQuery()
+                  ->getResult();
     }
-    
+
     public function productConcactAlreadyExists($showConcatenation)
     {
         return $this->createQueryBuilder('m')
@@ -53,14 +58,14 @@ class ProductRepository extends \Doctrine\ORM\EntityRepository
 
     public function productVisibilityToArray($campLiveId)
     {
-        return $this->createQueryBuilder('m')
-                    ->where("m.productVisibility = ?1")
-                    ->andWhere("m.campLiveId = ?2")
-                    ->setParameter(1, 1)
-                    ->setParameter(2, $campLiveId)
-                    ->orderBy("m.dateWeek", "ASC")
-                    ->getQuery()
-                    ->getArrayResult();
+      return $this->createQueryBuilder('m')
+                  ->where("m.productVisibility = ?1")
+                  ->andWhere("m.campLiveId = ?2")
+                  ->setParameter(1, 1)
+                  ->setParameter(2, $campLiveId)
+                  ->orderBy("m.priority","ASC")
+                  ->getQuery()
+                  ->getArrayResult();
     }
 
     public function sumProductVisibility($campLiveId)

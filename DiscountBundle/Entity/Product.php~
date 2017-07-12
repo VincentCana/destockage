@@ -490,26 +490,26 @@ class Product
     }
 
     /**
-     * Set keyProduct
+     * Set key
      *
-     * @param string $keyProduct
+     * @param string $key
      *
      * @return Product
      */
-    public function setKeyProduct($keyProduct)
+    public function setKey($key)
     {
-        $this->keyProduct = $keyProduct;
+        $this->key = $key;
 
         return $this;
     }
 
     /**
-     * Get keyProduct
+     * Get key
      *
      * @return string
      */
-    public function getKeyProduct()
+    public function getKey()
     {
-        return $this->keyProduct;
+        return $this->key;
     }
 }

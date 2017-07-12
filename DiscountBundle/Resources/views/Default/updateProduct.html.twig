@@ -1,6 +1,3 @@
-<body>
-
-
 <div class="modal fade" id="myUpdateModal" role="dialog" data-backdrop="false">
     <div class="modal-dialog">
         <!-- Modal content-->
@@ -41,7 +38,14 @@
                         {{ form_widget(formUpdate.discountValue, {'type' : 'number'}) }}
                         {{ form_errors(formUpdate.discountValue) }}
                     </div>
+                </div>
 
+                <div class="form-group">
+                    {{ form_label(formUpdate.priority, "Priorité", {'label_attr': {'class': 'col-sm-4 control-label'}}) }}
+                     <div class="col-sm-8">
+                        {{ form_widget(formUpdate.priority, {'type' : 'number'}) }}
+                        {{ form_errors(formUpdate.priority) }}
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -78,4 +82,3 @@
     </div>
 
 </div>
-</body>

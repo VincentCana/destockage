@@ -54,9 +54,9 @@ class DispoController extends Controller
 
         $campLiveId = $this->get("security.token_storage")->getToken()->getUser()->getCampLiveId();
 
-        $lien = '********************************';
-        $user= '*****************';
-        $pass = '**********************';
+        $lien = 'http://camplive.com/admin/destockage.php';
+        $user= 'camplive';
+        $pass = 'pa98mico';
 
         $year = date("Y");
         $week = $this->countWeekAction();
