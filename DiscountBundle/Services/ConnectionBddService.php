@@ -12,10 +12,10 @@ class ConnectionBddService
 {
     public function connectionBdd()
     {
-        $hote = 'camplive.deifi.fr';
-        $db = 'camplive';
-        $login = 'camplive';
-        $mdp = 'pa98mico';
+        $hote = '****';
+        $db = '****';
+        $login = '****';
+        $mdp = '****';
 
         try {
             $pdo = new PDO('mysql:host='.$hote.';dbname='.$db, $login, $mdp, array(PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8'));
